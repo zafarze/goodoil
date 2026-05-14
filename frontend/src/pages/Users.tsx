@@ -8,6 +8,7 @@ import {
   type SystemUser,
 } from '../api/client';
 import { useNotify } from '../components/Notify';
+import BackButton from '../components/BackButton';
 
 const FIELD_LABELS: Record<string, string> = {
   username: 'Логин',
@@ -239,7 +240,7 @@ export default function Users() {
   return (
     <div className="page">
       <div className="usr-page-header">
-        <h1>Доступ и роли</h1>
+        <BackButton />
         <button type="button" className="usr-add-btn" onClick={openCreate}>
           + Добавить владельца
         </button>

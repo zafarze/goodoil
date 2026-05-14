@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, type Employee, type Paginated, type Station } from '../api/client';
 import { useNotify } from '../components/Notify';
+import BackButton from '../components/BackButton';
 
 const FIELD_LABELS: Record<string, string> = {
   full_name: 'ФИО',
@@ -603,7 +604,7 @@ export default function Employees() {
     <div className="page">
       {/* Page header */}
       <div className="emp-page-header">
-        <h1>Сотрудники</h1>
+        <BackButton />
         <button
           type="button"
           className="emp-add-btn"

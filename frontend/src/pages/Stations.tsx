@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, type Paginated, type Station } from '../api/client';
 import { useNotify } from '../components/Notify';
+import BackButton from '../components/BackButton';
 
 const FIELD_LABELS: Record<string, string> = {
   name: 'Название',
@@ -171,7 +172,7 @@ export default function Stations() {
   return (
     <div className="page">
       <div className="sta-page-header">
-        <h1>АЗС</h1>
+        <BackButton />
         <button type="button" className="sta-add-btn" onClick={openCreate}>
           + Добавить АЗС
         </button>
