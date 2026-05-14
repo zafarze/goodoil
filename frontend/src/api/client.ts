@@ -144,3 +144,19 @@ export interface UserProfile {
   birth_date: string | null;
   photo: string | null;
 }
+
+export type SystemUserRole = 'owner' | 'employee' | 'user';
+
+export interface SystemUser {
+  id: number;
+  username: string;
+  is_active: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
+  date_joined: string;
+  last_login: string | null;
+  role: SystemUserRole;
+  employee_id: number | null;
+  employee_name: string | null;
+  employee_station: string | null;
+}

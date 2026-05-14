@@ -7,6 +7,9 @@ import Login from './pages/Login';
 import Reports from './pages/Reports';
 import Deliveries from './pages/Deliveries';
 import Employees from './pages/Employees';
+import Stations from './pages/Stations';
+import FuelTypes from './pages/FuelTypes';
+import Users from './pages/Users';
 import Management from './pages/Management';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
@@ -32,6 +35,9 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="deliveries" element={<Deliveries />} />
           <Route path="employees" element={<Employees />} />
+          <Route path="stations" element={<Stations />} />
+          <Route path="fuel-types" element={<FuelTypes />} />
+          <Route path="users" element={<Users />} />
           <Route path="management" element={<Management />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />

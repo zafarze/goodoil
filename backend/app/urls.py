@@ -8,6 +8,7 @@ from .views import (
     EmployeeViewSet,
     FuelTypeViewSet,
     StationViewSet,
+    SystemUserViewSet,
     passport_file,
     profile_change_password,
     profile_me,
@@ -20,6 +21,7 @@ router.register('employees', EmployeeViewSet)
 router.register('fuel-types', FuelTypeViewSet)
 router.register('deliveries', DeliveryViewSet)
 router.register('reports', DailyReportViewSet)
+router.register('users', SystemUserViewSet, basename='users')
 
 urlpatterns = [
     path('auth/login/', LoginView.as_view(), name='auth-login'),

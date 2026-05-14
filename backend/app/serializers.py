@@ -239,6 +239,118 @@ class FuelTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'unit']
 
 
+class SystemUserSerializer(serializers.ModelSerializer):
+    """Serializer for Django auth.User exposed via /api/users/.
+
+    Password is write-only via `new_password` and only accepted on create.
+    Use the reset-password action for rotation after create.
+    """
+    role = serializers.SerializerMethodField()
+    employee_id = serializers.SerializerMethodField()
+    employee_name = serializers.SerializerMethodField()
+    employee_station = serializers.SerializerMethodField()
+    new_password = serializers.CharField(write_only=True, required=False, min_length=1)
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username',
+            'is_active', 'is_staff', 'is_superuser',
+            'date_joined', 'last_login',
+            'role', 'employee_id', 'employee_name', 'employee_station',
+            'new_password',
+        ]
+        read_only_fields = ['date_joined', 'last_login', 'is_superuser']
+
+    @staticmethod
+    def _employee(user):
+        try:
+            return user.employee
+        except Employee.DoesNotExist:
+            return None
+
+    def get_role(self, obj):
+        if obj.is_staff:
+            return 'owner'
+        if self._employee(obj) is not None:
+            return 'employee'
+        return 'user'
+
+    def get_employee_id(self, obj):
+        emp = self._employee(obj)
+        return emp.id if emp else None
+
+    def get_employee_name(self, obj):
+        emp = self._employee(obj)
+        return emp.full_name if emp else None
+
+    def get_employee_station(self, obj):
+        emp = self._employee(obj)
+        if emp and emp.station_id:
+            return emp.station.name
+        return None
+
+    def validate(self, attrs):
+        if self.instance is None:
+            errors = {}
+            if _is_empty_string(attrs.get('username')):
+                errors['username'] = 'Обязательное поле.'
+            if not attrs.get('new_password'):
+                errors['new_password'] = 'Обязательное поле.'
+            if errors:
+                raise serializers.ValidationError(errors)
+            new_password = attrs.get('new_password')
+            dummy_user = User(username=attrs.get('username', ''))
+            try:
+                validate_password(new_password, user=dummy_user)
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError({'new_password': list(exc.messages)})
+        else:
+            if 'username' in attrs:
+                raise serializers.ValidationError({'username': 'Логин нельзя менять после создания.'})
+            if 'new_password' in attrs:
+                raise serializers.ValidationError(
+                    {'new_password': 'Используйте действие «Сброс пароля».'}
+                )
+        return attrs
+
+    def create(self, validated_data):
+        username = validated_data.pop('username')
+        new_password = validated_data.pop('new_password')
+        # This endpoint is for creating system owners by default.
+        is_staff = validated_data.pop('is_staff', True)
+        is_active = validated_data.pop('is_active', True)
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=username,
+                    password=new_password,
+                )
+                user.is_staff = is_staff
+                user.is_active = is_active
+                user.save(update_fields=['is_staff', 'is_active'])
+        except IntegrityError:
+            raise serializers.ValidationError({'username': 'Логин уже занят.'})
+        return user
+
+    def update(self, instance, validated_data):
+        validated_data.pop('username', None)
+        validated_data.pop('new_password', None)
+        deactivated = (
+            'is_active' in validated_data
+            and instance.is_active is True
+            and validated_data['is_active'] is False
+        )
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if deactivated:
+            # Drop tokens so the deactivated account cannot keep calling the API.
+            from rest_framework.authtoken.models import Token
+            Token.objects.filter(user=instance).delete()
+        return instance
+
+
 class DeliverySerializer(serializers.ModelSerializer):
     fuel_type_name = serializers.CharField(source='fuel_type.name', read_only=True)
     station_name = serializers.CharField(source='station.name', read_only=True)

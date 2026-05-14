@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -27,6 +28,7 @@ from .serializers import (
     EmployeeSerializer,
     FuelTypeSerializer,
     StationSerializer,
+    SystemUserSerializer,
     UserProfileSerializer,
 )
 
@@ -35,6 +37,17 @@ class StationViewSet(viewsets.ModelViewSet):
     queryset = Station.objects.all()
     serializer_class = StationSerializer
     permission_classes = [permissions.IsAdminUser]
+
+    def destroy(self, request, *args, **kwargs):
+        station = self.get_object()
+        try:
+            station.delete()
+        except ProtectedError:
+            return Response(
+                {'detail': 'К АЗС привязаны сотрудники, привозы или отчёты — удаление невозможно.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'])
     def remainders(self, request, pk=None):
@@ -128,9 +141,127 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 
 class FuelTypeViewSet(viewsets.ModelViewSet):
-    queryset = FuelType.objects.all()
+    queryset = FuelType.objects.all().order_by('name')
     serializer_class = FuelTypeSerializer
     permission_classes = [permissions.IsAdminUser]
+
+    def destroy(self, request, *args, **kwargs):
+        fuel = self.get_object()
+        try:
+            fuel.delete()
+        except ProtectedError:
+            return Response(
+                {'detail': 'Этот вид топлива используется в привозах или отчётах — удаление невозможно.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SystemUserViewSet(viewsets.ModelViewSet):
+    """Manage Django auth.User accounts (owners + linked employees). Admin-only.
+
+    Self-protection: cannot demote/deactivate/delete the requesting user.
+    Employee-linked rows are read-only here — manage via /api/employees/.
+    """
+    serializer_class = SystemUserSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def get_queryset(self):
+        return (
+            User.objects
+            .select_related('employee', 'employee__station')
+            .order_by('-is_staff', 'username')
+        )
+
+    def _is_self(self, request, user) -> bool:
+        return user.pk == request.user.pk
+
+    def _is_employee_linked(self, user) -> bool:
+        try:
+            return user.employee is not None
+        except Employee.DoesNotExist:
+            return False
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        if self._is_self(request, user):
+            if 'is_active' in request.data and not _truthy(request.data.get('is_active')):
+                return Response(
+                    {'detail': 'Нельзя отключить свою учётную запись.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if 'is_staff' in request.data and not _truthy(request.data.get('is_staff')):
+                return Response(
+                    {'detail': 'Нельзя снять с себя права владельца.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        if self._is_employee_linked(user):
+            return Response(
+                {'detail': 'Эта учётная запись принадлежит сотруднику — управляйте в разделе «Сотрудники».'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        if self._is_self(request, user):
+            return Response(
+                {'detail': 'Нельзя удалить свою учётную запись.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if self._is_employee_linked(user):
+            return Response(
+                {'detail': 'Эта учётная запись принадлежит сотруднику — удаляйте сотрудника в разделе «Сотрудники».'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            user.delete()
+        except ProtectedError:
+            return Response(
+                {'detail': 'У пользователя есть связанные записи — удаление невозможно.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        user = self.get_object()
+        if self._is_employee_linked(user):
+            return Response(
+                {'detail': 'Эта учётная запись принадлежит сотруднику — сбрасывайте пароль в разделе «Сотрудники».'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        new_password = request.data.get('new_password')
+        if not new_password:
+            raise ValidationError({'new_password': 'Обязательное поле.'})
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            raise ValidationError({'new_password': list(e.messages)})
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        from rest_framework.authtoken.models import Token
+        if self._is_self(request, user):
+            # Keep the calling session alive; drop every other token.
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            current_token_key = None
+            if auth_header.startswith('Token '):
+                current_token_key = auth_header.split(' ', 1)[1].strip()
+            qs = Token.objects.filter(user=user)
+            if current_token_key:
+                qs = qs.exclude(key=current_token_key)
+            qs.delete()
+        else:
+            Token.objects.filter(user=user).delete()
+        return Response({'detail': 'Пароль обновлён.'}, status=status.HTTP_200_OK)
+
+
+def _truthy(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in {'true', '1', 'yes', 'on'}
+    return bool(value)
 
 
 class DeliveryViewSet(viewsets.ModelViewSet):
