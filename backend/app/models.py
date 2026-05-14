@@ -29,6 +29,9 @@ class FuelType(models.Model):
     class Unit(models.TextChoices):
         LITERS = 'L', 'Литры'
         TONS = 'T', 'Тонны'
+        KILOGRAMS = 'KG', 'Килограммы'
+        CUBIC_METERS = 'M3', 'Кубометры'
+        PIECES = 'ST', 'Штуки'
 
     name = models.CharField(max_length=50, unique=True)
     unit = models.CharField(max_length=2, choices=Unit.choices, default=Unit.LITERS)

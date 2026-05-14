@@ -11,12 +11,17 @@ const FIELD_LABELS: Record<string, string> = {
   non_field_errors: 'Ошибка',
 };
 
-const UNIT_OPTIONS: Array<{ value: 'L' | 'T'; label: string }> = [
+type UnitCode = 'L' | 'T' | 'KG' | 'M3' | 'ST';
+
+const UNIT_OPTIONS: Array<{ value: UnitCode; label: string }> = [
   { value: 'L', label: 'Литры' },
   { value: 'T', label: 'Тонны' },
+  { value: 'KG', label: 'Килограммы' },
+  { value: 'M3', label: 'Кубометры' },
+  { value: 'ST', label: 'Штуки' },
 ];
 
-function unitLabel(unit: 'L' | 'T'): string {
+function unitLabel(unit: UnitCode | string): string {
   return UNIT_OPTIONS.find((o) => o.value === unit)?.label ?? unit;
 }
 
@@ -86,8 +91,8 @@ function Modal({ open, onClose, children }: ModalProps) {
 }
 
 interface UnitDropdownProps {
-  value: 'L' | 'T';
-  onChange: (v: 'L' | 'T') => void;
+  value: UnitCode;
+  onChange: (v: UnitCode) => void;
 }
 
 function UnitDropdown({ value, onChange }: UnitDropdownProps) {
@@ -175,7 +180,10 @@ function UnitDropdown({ value, onChange }: UnitDropdownProps) {
                 setOpen(false);
               }}
             >
-              {o.label}
+              <span>{o.label}</span>
+              <svg className="ft-dd-option-check" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M3 8.5l3.5 3.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </li>
           ))}
         </ul>
@@ -190,7 +198,7 @@ export default function FuelTypes() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<{ name: string; unit: 'L' | 'T' }>({ name: '', unit: 'L' });
+  const [form, setForm] = useState<{ name: string; unit: UnitCode }>({ name: '', unit: 'L' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -456,8 +464,6 @@ const fuelCss = `
   position: relative;
   width: 100%;
   max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border-strong);
   border-radius: 20px;
@@ -541,6 +547,8 @@ const fuelCss = `
   font-size: 15px;
   font-family: inherit;
   font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
   min-height: 42px;
   background: var(--panel-2);
   background-image: none;
@@ -608,6 +616,8 @@ const fuelCss = `
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   animation: ft-dd-in 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+  text-transform: none;
+  letter-spacing: normal;
 }
 @keyframes ft-dd-in {
   from { opacity: 0; transform: translateY(-6px); }
@@ -620,9 +630,16 @@ const fuelCss = `
 }
 
 .ft-dd-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--text);
   cursor: pointer;
   transition: background 0.12s;
@@ -633,21 +650,34 @@ const fuelCss = `
   background: rgba(255, 255, 255, 0.07);
 }
 .ft-dd-option.selected {
-  background: linear-gradient(135deg, rgba(74, 222, 128, 0.20), rgba(56, 189, 248, 0.14));
-  color: #d8ffe6;
-  font-weight: 600;
+  background: rgba(74, 222, 128, 0.10);
+  color: var(--text);
+  font-weight: 500;
 }
 .ft-dd-option.selected.highlighted {
-  background: linear-gradient(135deg, rgba(74, 222, 128, 0.28), rgba(56, 189, 248, 0.20));
+  background: rgba(74, 222, 128, 0.16);
 }
+.ft-dd-option-check {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.ft-dd-option.selected .ft-dd-option-check { opacity: 1; }
+
 :root[data-theme="light"] .ft-dd-option { color: var(--text); }
 :root[data-theme="light"] .ft-dd-option:hover,
 :root[data-theme="light"] .ft-dd-option.highlighted {
   background: rgba(15, 23, 42, 0.05);
 }
 :root[data-theme="light"] .ft-dd-option.selected {
-  background: linear-gradient(135deg, rgba(74, 222, 128, 0.20), rgba(56, 189, 248, 0.14));
-  color: #047857;
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--text);
+}
+:root[data-theme="light"] .ft-dd-option.selected.highlighted {
+  background: rgba(74, 222, 128, 0.20);
 }
 
 .ft-col-num {

@@ -69,10 +69,12 @@ export interface Station {
   address: string;
 }
 
+export type FuelUnit = 'L' | 'T' | 'KG' | 'M3' | 'ST';
+
 export interface FuelType {
   id: number;
   name: string;
-  unit: 'L' | 'T';
+  unit: FuelUnit;
 }
 
 export interface Employee {
