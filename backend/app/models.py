@@ -11,9 +11,15 @@ class Station(models.Model):
 
 class Employee(models.Model):
     full_name = models.CharField(max_length=150)
-    telegram_id = models.BigIntegerField(unique=True)
-    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name='employees')
+    telegram_id = models.BigIntegerField(unique=True, null=True, blank=True)
+    station = models.ForeignKey(Station, on_delete=models.PROTECT, related_name='employees', null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    birth_date = models.DateField(null=True, blank=True)
+    phone = models.CharField(max_length=20, blank=True, default='')
+    address = models.CharField(max_length=255, blank=True, default='')
+    passport_front = models.ImageField(upload_to='passports/%Y/%m/', null=True, blank=True)
+    passport_back = models.ImageField(upload_to='passports/%Y/%m/', null=True, blank=True)
+    user = models.OneToOneField('auth.User', on_delete=models.PROTECT, null=True, blank=True, related_name='employee')
 
     def __str__(self):
         return f'{self.full_name} ({self.station})'
@@ -89,3 +95,19 @@ class ReportItem(models.Model):
 
     def __str__(self):
         return f'{self.report} / {self.fuel_type}: {self.sold}'
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        'auth.User',
+        on_delete=models.CASCADE,
+        related_name='profile',
+    )
+    full_name = models.CharField(max_length=150, blank=True, default='')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    address = models.CharField(max_length=255, blank=True, default='')
+    birth_date = models.DateField(null=True, blank=True)
+    photo = models.ImageField(upload_to='profiles/%Y/%m/', null=True, blank=True)
+
+    def __str__(self):
+        return f'Profile<{self.user.username}>'

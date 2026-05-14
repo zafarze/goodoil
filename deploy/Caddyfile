@@ -1,0 +1,18 @@
+34-1-47-10.nip.io {
+    encode gzip
+
+    # /media/ is sensitive — auth-gated views serve files directly; deny direct disk access.
+    @media path /media/*
+    respond @media 403
+
+    reverse_proxy web:8000 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Host {host}
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

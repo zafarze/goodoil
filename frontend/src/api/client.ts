@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 export const TOKEN_KEY = 'goodoil_token';
 
@@ -17,7 +17,7 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (r) => r,
-  (err) => {
+  (err: AxiosError) => {
     if (err?.response?.status === 401) {
       localStorage.removeItem(TOKEN_KEY);
       if (!window.location.pathname.startsWith('/login')) {
@@ -82,6 +82,13 @@ export interface Employee {
   station: number;
   station_name: string;
   is_active: boolean;
+  birth_date: string | null;
+  phone: string;
+  address: string;
+  passport_front: string | null;
+  passport_back: string | null;
+  user: number | null;
+  user_username: string | null;
 }
 
 export interface Delivery {
@@ -126,4 +133,14 @@ export interface Remainder {
   delivered: number;
   sold: number;
   remainder: number;
+}
+
+export interface UserProfile {
+  username: string;
+  is_staff: boolean;
+  full_name: string;
+  phone: string;
+  address: string;
+  birth_date: string | null;
+  photo: string | null;
 }

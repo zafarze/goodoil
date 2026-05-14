@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { currentUser, logout } from '../api/client';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { api, currentUser, logout, type UserProfile } from '../api/client';
 
 interface Props {
   onBurger: () => void;
@@ -28,11 +28,13 @@ const titleMap: Record<string, [string, string]> = {
 
 export default function Header({ onBurger }: Props) {
   const user = currentUser();
+  const navigate = useNavigate();
   const [menu, setMenu] = useState<null | 'lang' | 'notif' | 'user'>(null);
   const [lang, setLang] = useState<Lang>('RU');
   const [search, setSearch] = useState('');
   const headerRef = useRef<HTMLElement>(null);
   const loc = useLocation();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [title, subtitle] = titleMap[loc.pathname] ?? ['Good Oil CRM', ''];
 
@@ -45,6 +47,30 @@ export default function Header({ onBurger }: Props) {
   }, []);
 
   useEffect(() => { setMenu(null); }, [loc.pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    async function load() {
+      try {
+        const res = await api.get<UserProfile>('/profile/me/');
+        if (cancelled) return;
+        if (res.data.photo) {
+          const blob = await api.get(res.data.photo, { responseType: 'blob' });
+          if (cancelled) return;
+          createdUrl = URL.createObjectURL(blob.data as Blob);
+          setAvatarUrl(createdUrl);
+        }
+      } catch {
+        // silent — header avatar is non-essential
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, []);
 
   const initial = (user?.username ?? '?').slice(0, 1).toUpperCase();
   const currentLang = langOptions.find((l) => l.code === lang)!;
@@ -134,7 +160,9 @@ export default function Header({ onBurger }: Props) {
             onClick={() => setMenu((m) => (m === 'user' ? null : 'user'))}
             aria-label="Профиль"
           >
-            <span className="head-user-ava">{initial}</span>
+            <span className="head-user-ava">
+              {avatarUrl ? <img src={avatarUrl} alt="" /> : initial}
+            </span>
             <span className="head-user-info">
               <span className="head-user-name">{user?.username ?? 'Гость'}</span>
               <span className="head-user-role">Владелец</span>
@@ -144,16 +172,18 @@ export default function Header({ onBurger }: Props) {
           {menu === 'user' && (
             <div className="hdr-dropdown">
               <div className="hdr-dd-user">
-                <div className="hdr-dd-avatar">{initial}</div>
+                <div className="hdr-dd-avatar">
+                  {avatarUrl ? <img src={avatarUrl} alt="" /> : initial}
+                </div>
                 <div>
                   <div className="hdr-dd-name">{user?.username ?? 'Гость'}</div>
                   <div className="hdr-dd-role">Владелец</div>
                 </div>
               </div>
-              <button className="hdr-dd-item" onClick={() => setMenu(null)}>
+              <button className="hdr-dd-item" onClick={() => { setMenu(null); navigate('/profile'); }}>
                 <span>👤</span><span>Профиль</span>
               </button>
-              <button className="hdr-dd-item" onClick={() => setMenu(null)}>
+              <button className="hdr-dd-item" onClick={() => { setMenu(null); navigate('/settings'); }}>
                 <span>⚙️</span><span>Настройки</span>
               </button>
               <div className="hdr-dd-sep" />

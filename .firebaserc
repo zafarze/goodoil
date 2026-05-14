@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "goodoil-f724e"
+  },
+  "targets": {
+    "goodoil-f724e": {
+      "hosting": {
+        "main": [
+          "good-oil"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

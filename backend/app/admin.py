@@ -7,6 +7,7 @@ from .models import (
     FuelType,
     ReportItem,
     Station,
+    UserProfile,
 )
 
 
@@ -18,7 +19,7 @@ class StationAdmin(admin.ModelAdmin):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'full_name', 'telegram_id', 'station', 'is_active')
+    list_display = ('id', 'full_name', 'telegram_id', 'station', 'is_active', 'user', 'birth_date', 'phone')
     list_filter = ('station', 'is_active')
     search_fields = ('full_name', 'telegram_id')
 
@@ -52,3 +53,9 @@ class DailyReportAdmin(admin.ModelAdmin):
 class ReportItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'report', 'fuel_type', 'sold', 'revenue', 'remainder')
     list_filter = ('fuel_type',)
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'full_name', 'phone', 'birth_date')
+    search_fields = ('user__username', 'full_name', 'phone')

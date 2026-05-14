@@ -1,0 +1,77 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    environment:
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      BOT_TOKEN: ${BOT_TOKEN}
+      BEHIND_PROXY: "True"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile -"
+
+  # Telegram bot — uncomment when BOT_TOKEN is set in .env.
+  # bot:
+  #   build:
+  #     context: ../backend
+  #   restart: unless-stopped
+  #   environment:
+  #     DEBUG: "False"
+  #     SECRET_KEY: ${SECRET_KEY}
+  #     ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+  #     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  #     BOT_TOKEN: ${BOT_TOKEN}
+  #   depends_on:
+  #     web:
+  #       condition: service_started
+  #     db:
+  #       condition: service_healthy
+  #   volumes:
+  #     - media:/app/media
+  #   command: python -m bot
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  pgdata:
+  media:
+  caddy_data:
+  caddy_config:

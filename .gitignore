@@ -50,6 +50,10 @@ Thumbs.db
 # --- Claude Code ---
 .claude/
 
+# --- Firebase ---
+.firebase/
+firebase-debug.log
+
 # --- Misc ---
 *.bak
 *.tmp

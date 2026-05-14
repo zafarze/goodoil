@@ -358,11 +358,15 @@ const loginCss = `
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  padding: 0;
   background: transparent;
+  background-image: none;
   border: none;
-  font-size: 18px;
+  box-shadow: none;
+  font-size: 16px;
   cursor: pointer;
   border-radius: 8px;
   display: grid;
@@ -371,7 +375,13 @@ const loginCss = `
   opacity: 0.7;
   transition: opacity 0.2s, background 0.2s;
 }
-.go-pwd-toggle:hover { opacity: 1; background: rgba(255, 255, 255, 0.08); }
+.go-pwd-toggle:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+  background-image: none;
+  transform: translateY(-50%);
+  box-shadow: none;
+}
 
 .go-error {
   padding: 10px 14px;
